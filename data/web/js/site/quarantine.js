@@ -472,7 +472,12 @@ jQuery(function($){
       data: { id: item_id },
       dataType: 'json',
       success: function (data) {
-        from_header_cache[item_id] = (data && data.header_from) ? escapeHtml(data.header_from) : '-';
+        // Bootstrap's tooltip renders its title as plain text (no html:true
+        // option is set), i.e. via textContent - it is not vulnerable to
+        // markup in this string and does not decode HTML entities either,
+        // so escaping here would make literal "&lt;", "&amp;", ... show up
+        // in the tooltip instead of the characters they stand for.
+        from_header_cache[item_id] = (data && data.header_from) ? data.header_from : '-';
         if (info_link.is(':hover, :focus')) {
           set_tooltip_text(from_header_cache[item_id]);
         }
