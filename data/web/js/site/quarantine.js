@@ -19,7 +19,7 @@ jQuery(function($){
       serverSide: false,
       stateSave: true,
       pageLength: pagination_size,
-      order: [[2, 'desc']],
+      order: [[3, 'desc']],
       lengthMenu: [
         [10, 25, 50, 100, -1],
         [10, 25, 50, 100, 'all']
@@ -35,6 +35,10 @@ jQuery(function($){
       language: lang_datatables,
       initComplete: function(){
         hideTableExpandCollapseBtn('#quarantinetable');
+      },
+      drawCallback: function(){
+        $('#quarantinetable [data-bs-toggle="tooltip"]').tooltip();
+        update_execute_staged_actions_btn();
       },
       ajax: {
         type: "GET",
@@ -66,17 +70,52 @@ jQuery(function($){
             } else {
               item.notified = '&#10006;';
             }
-            if (acl_data.login_as === 1) {
-            item.action = '<div class="btn-group">' +
-              '<a href="#" data-item="' + encodeURI(item.id) + '" class="btn btn-xs btn-xs-half btn-info show_qid_info"><i class="bi bi-box-arrow-up-right"></i> ' + lang.show_item + '</a>' +
-              '<a href="#" data-action="delete_selected" data-id="del-single-qitem" data-api-url="delete/qitem" data-item="' + encodeURI(item.id) + '" class="btn btn-xs  btn-xs-half btn-danger"><i class="bi bi-trash"></i> ' + lang.remove + '</a>' +
-              '</div>';
+            var can_quarantine_act = (acl_data.quarantine === 1);
+            var can_delete = (acl_data.login_as === 1);
+
+            // Row action menu: "Details" plus, where allowed, the direct actions
+            // that previously required opening the details modal first.
+            if (can_quarantine_act || can_delete) {
+              item.action = '<div class="btn-group">' +
+                '<a href="#" data-item="' + encodeURI(item.id) + '" class="btn btn-xs btn-xs-half btn-info show_qid_info"><i class="bi bi-file-earmark-text"></i> ' + lang.show_item + '</a>' +
+                '<a href="#" class="btn btn-xs btn-xs-half btn-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false"><span class="visually-hidden">' + lang.quick_actions + '</span></a>' +
+                '<ul class="dropdown-menu dropdown-menu-end">';
+              if (can_quarantine_act) {
+                item.action += '<li><a class="dropdown-item" href="#" data-action="edit_selected" data-id="release-single-qitem" data-api-url="edit/qitem" data-api-attr=\'{"action":"release"}\' data-item="' + encodeURI(item.id) + '"><i class="bi bi-inbox"></i> ' + lang.deliver_inbox + '</a></li>' +
+                  '<li><hr class="dropdown-divider"></li>' +
+                  '<li><a class="dropdown-item" href="#" data-action="edit_selected" data-id="learnspam-single-qitem" data-api-url="edit/qitem" data-api-attr=\'{"action":"learnspam"}\' data-item="' + encodeURI(item.id) + '"><i class="bi bi-shield-exclamation"></i> ' + lang.learn_spam_delete + '</a></li>';
+              }
+              if (can_delete) {
+                item.action += '<li><hr class="dropdown-divider"></li>' +
+                  '<li><a class="dropdown-item text-danger" href="#" data-action="delete_selected" data-id="delete-single-qitem" data-api-url="delete/qitem" data-item="' + encodeURI(item.id) + '"><i class="bi bi-trash"></i> ' + lang.remove + '</a></li>';
+              }
+              item.action += '</ul></div>';
             }
             else {
-            item.action = '<div class="btn-group">' +
-              '<a href="#" data-item="' + encodeURI(item.id) + '" class="btn btn-xs btn-info show_qid_info"><i class="bi bi-file-earmark-text"></i> ' + lang.show_item + '</a>' +
-              '</div>';
+              item.action = '<div class="btn-group">' +
+                '<a href="#" data-item="' + encodeURI(item.id) + '" class="btn btn-xs btn-info show_qid_info"><i class="bi bi-file-earmark-text"></i> ' + lang.show_item + '</a>' +
+                '</div>';
             }
+
+            // Per-row staging: mark a row for release/learnspam/delete without
+            // executing immediately, so mixed actions across rows can be run
+            // together via #execute_staged_actions.
+            item.stage = '<div class="btn-group stage-group" data-item="' + encodeURI(item.id) + '">';
+            if (can_quarantine_act) {
+              item.stage += '<a href="#" class="btn btn-xs btn-outline-secondary stage-toggle" data-stage-action="release" title="' + lang.deliver_inbox + '"><i class="bi bi-inbox"></i></a>' +
+                '<a href="#" class="btn btn-xs btn-outline-secondary stage-toggle" data-stage-action="learnspam" title="' + lang.learn_spam_delete + '"><i class="bi bi-shield-exclamation"></i></a>';
+            }
+            if (can_delete) {
+              item.stage += '<a href="#" class="btn btn-xs btn-outline-secondary stage-toggle" data-stage-action="delete" title="' + lang.remove + '"><i class="bi bi-trash"></i></a>';
+            }
+            item.stage += '</div>';
+
+            // Sender (SMTP) stays the searchable/sortable value; sender_html adds
+            // an on-demand "From" header tooltip without an extra API round trip
+            // for every row (see .q-from-info handler below).
+            item.sender_html = '<span>' + escapeHtml(item.sender) + '</span> ' +
+              '<a href="#" class="q-from-info" data-bs-toggle="tooltip" data-item="' + encodeURI(item.id) + '" title=""><i class="bi bi-info-circle"></i></a>';
+
             item.chkbox = '<input type="checkbox" class="form-check-input" data-id="qitems" name="multi_select" value="' + item.id + '" />';
           });
 
@@ -100,6 +139,13 @@ jQuery(function($){
           defaultContent: ''
         },
         {
+          title: '',
+          data: 'stage',
+          searchable: false,
+          orderable: false,
+          defaultContent: ''
+        },
+        {
           title: 'ID',
           data: 'id',
           defaultContent: '',
@@ -113,10 +159,9 @@ jQuery(function($){
         },
         {
           title: lang.sender,
-          data: 'sender',
+          data: { _: 'sender_html', sort: 'sender', filter: 'sender' },
           className: 'senders-mw220',
-          defaultContent: '',
-          render: $.fn.dataTable.render.text()
+          defaultContent: ''
         },
         {
           title: lang.subj,
@@ -281,6 +326,145 @@ jQuery(function($){
           qError.text("Error loading quarantine item");
           qError.show();
         }
+      }
+    });
+  });
+
+  // Stage a single row for release/learnspam/delete without executing it yet,
+  // so rows can be staged with different actions and applied together via
+  // #execute_staged_actions. At most one staged action per row (radio-like).
+  $('body').on('click', '.stage-toggle', function (e) {
+    e.preventDefault();
+    var was_active = $(this).hasClass('active');
+    var group = $(this).closest('.stage-group');
+    group.find('.stage-toggle').removeClass('active btn-success btn-warning btn-danger').addClass('btn-outline-secondary');
+    if (!was_active) {
+      var stage_action = $(this).data('stage-action');
+      $(this).removeClass('btn-outline-secondary').addClass('active');
+      if (stage_action === 'release') $(this).addClass('btn-success');
+      else if (stage_action === 'learnspam') $(this).addClass('btn-warning');
+      else if (stage_action === 'delete') $(this).addClass('btn-danger');
+    }
+    update_execute_staged_actions_btn();
+  });
+
+  function update_execute_staged_actions_btn() {
+    var staged_count = $('.stage-toggle.active').length;
+    $('#execute_staged_actions').toggleClass('disabled', staged_count === 0);
+  }
+
+  // Run every staged action in one pass: group staged rows by action, fire the
+  // release/learnspam requests right away (matches the existing mass-action
+  // behaviour, which also does not ask for confirmation), and reuse the
+  // existing #ConfirmDeleteModal for the delete bucket before deleting.
+  $('body').on('click', '#execute_staged_actions', function (e) {
+    e.preventDefault();
+    if ($(this).hasClass('disabled')) return;
+
+    var buckets = { release: [], learnspam: [], delete: [] };
+    $('.stage-toggle.active').each(function () {
+      var stage_action = $(this).data('stage-action');
+      var item_id = decodeURIComponent($(this).closest('.stage-group').data('item'));
+      buckets[stage_action].push(item_id);
+    });
+
+    function reload_page() {
+      window.location = window.location.href.split("#")[0];
+    }
+
+    function post_edit(items, action) {
+      return $.ajax({
+        type: "POST",
+        dataType: "json",
+        data: {
+          "items": JSON.stringify(items),
+          "attr": JSON.stringify({ "action": action }),
+          "csrf_token": csrf_token
+        },
+        url: '/api/v1/edit/qitem',
+        jsonp: false
+      });
+    }
+
+    function run_release_and_learnspam() {
+      var requests = [];
+      if (buckets.release.length) requests.push(post_edit(buckets.release, 'release'));
+      if (buckets.learnspam.length) requests.push(post_edit(buckets.learnspam, 'learnspam'));
+      if (requests.length) {
+        $.when.apply($, requests).always(reload_page);
+      } else {
+        reload_page();
+      }
+    }
+
+    if (buckets.delete.length) {
+      // Reset any leftover one-time handlers a previous, unrelated confirm
+      // dialog on this page may have left bound (see delete_selected in
+      // 011-api.js), so only this run's handler reacts to the next click.
+      $('#IsConfirmed, #isCanceled').off('click');
+      $("#ItemsToDelete").empty();
+      $.each(buckets.delete, function (i, item_id) {
+        $("#ItemsToDelete").append("<li>" + escapeHtml(item_id) + "</li>");
+      });
+      $('#ConfirmDeleteModal').modal('show')
+        .one('click', '#IsConfirmed', function () {
+          $.ajax({
+            type: "POST",
+            dataType: "json",
+            cache: false,
+            data: {
+              "items": JSON.stringify(buckets.delete),
+              "csrf_token": csrf_token
+            },
+            url: '/api/v1/delete/qitem',
+            jsonp: false
+          }).always(run_release_and_learnspam);
+        })
+        .one('click', '#isCanceled', function () {
+          $('#ConfirmDeleteModal').off();
+          $('#ConfirmDeleteModal').modal('hide');
+          run_release_and_learnspam();
+        });
+    } else {
+      run_release_and_learnspam();
+    }
+  });
+
+  // Load the "From" header for a row on demand (hover or, on touch devices,
+  // tap/focus) instead of shipping it with every row of the list, which would
+  // require parsing the full message for each of up to 100 rows on every
+  // table draw. Reuses the existing single-item endpoint and caches the
+  // result per row for the lifetime of the page.
+  var from_header_cache = {};
+  $('body').on('click', '.q-from-info', function (e) {
+    e.preventDefault();
+  });
+  $('body').on('mouseenter focus', '.q-from-info', function () {
+    var info_link = $(this);
+    var item_id = info_link.data('item');
+
+    function set_tooltip_text(text) {
+      info_link.attr('data-bs-original-title', lang.sender_header + ': ' + text).tooltip('show');
+    }
+
+    if (typeof from_header_cache[item_id] !== 'undefined') {
+      set_tooltip_text(from_header_cache[item_id]);
+      return;
+    }
+
+    set_tooltip_text('…');
+    $.ajax({
+      url: '/inc/ajax/qitem_details.php',
+      data: { id: item_id },
+      dataType: 'json',
+      success: function (data) {
+        from_header_cache[item_id] = (data && data.header_from) ? escapeHtml(data.header_from) : '-';
+        if (info_link.is(':hover, :focus')) {
+          set_tooltip_text(from_header_cache[item_id]);
+        }
+      },
+      error: function () {
+        from_header_cache[item_id] = '-';
       }
     });
   });

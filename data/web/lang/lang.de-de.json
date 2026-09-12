@@ -1057,6 +1057,7 @@
         "disabled_by_config": "Die derzeitige Konfiguration deaktiviert die Funktion des Quarantäne-Systems. Zur Funktion muss eine Anzahl an Rückhaltungen pro Mailbox sowie ein Limit für die maximale Größe pro Element definiert werden.",
         "download_eml": "Herunterladen (.eml)",
         "empty": "Keine Einträge",
+        "execute_staged_actions": "Ausgewählte Aktionen ausführen",
         "high_danger": "Hoch",
         "info": "Information",
         "junk_folder": "Junk-Ordner",

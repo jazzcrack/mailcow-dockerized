@@ -1058,6 +1058,7 @@
         "disabled_by_config": "The current system configuration disables the quarantine functionality. Please set \"retentions per mailbox\" and a \"maximum size\" for quarantine elements.",
         "download_eml": "Download (.eml)",
         "empty": "No results",
+        "execute_staged_actions": "Execute selected actions",
         "high_danger": "High",
         "info": "Information",
         "junk_folder": "Junk folder",
