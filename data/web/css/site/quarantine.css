@@ -101,4 +101,9 @@ table tbody tr td input[type="checkbox"] {
 }
 .senders-mw220 {
   max-width: 220px;
+  /* Force very long, unbroken sender addresses to wrap within the column
+     instead of stretching the table; overflow-wrap only changes where the
+     line breaks visually, so copying the cell's text still yields the
+     sender address unchanged. */
+  overflow-wrap: anywhere;
 }

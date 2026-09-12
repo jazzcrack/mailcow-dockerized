@@ -73,15 +73,17 @@ jQuery(function($){
             var can_quarantine_act = (acl_data.quarantine === 1);
             var can_delete = (acl_data.login_as === 1);
 
-            // Row action menu: "Details" plus, where allowed, the direct actions
-            // that previously required opening the details modal first.
+            // Row action menu: a single button offering a choice between
+            // "Details" and, where allowed, the direct actions that previously
+            // required opening the details modal first.
             if (can_quarantine_act || can_delete) {
               item.action = '<div class="btn-group">' +
-                '<a href="#" data-item="' + encodeURI(item.id) + '" class="btn btn-xs btn-xs-half btn-info show_qid_info"><i class="bi bi-file-earmark-text"></i> ' + lang.show_item + '</a>' +
-                '<a href="#" class="btn btn-xs btn-xs-half btn-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false"><span class="visually-hidden">' + lang.quick_actions + '</span></a>' +
-                '<ul class="dropdown-menu dropdown-menu-end">';
+                '<a href="#" class="btn btn-xs btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-three-dots"></i> <span class="visually-hidden">' + lang.quick_actions + '</span></a>' +
+                '<ul class="dropdown-menu dropdown-menu-end">' +
+                '<li><a class="dropdown-item show_qid_info" href="#" data-item="' + encodeURI(item.id) + '"><i class="bi bi-file-earmark-text"></i> ' + lang.show_item + '</a></li>';
               if (can_quarantine_act) {
-                item.action += '<li><a class="dropdown-item" href="#" data-action="edit_selected" data-id="release-single-qitem" data-api-url="edit/qitem" data-api-attr=\'{"action":"release"}\' data-item="' + encodeURI(item.id) + '"><i class="bi bi-inbox"></i> ' + lang.deliver_inbox + '</a></li>' +
+                item.action += '<li><hr class="dropdown-divider"></li>' +
+                  '<li><a class="dropdown-item" href="#" data-action="edit_selected" data-id="release-single-qitem" data-api-url="edit/qitem" data-api-attr=\'{"action":"release"}\' data-item="' + encodeURI(item.id) + '"><i class="bi bi-inbox"></i> ' + lang.deliver_inbox + '</a></li>' +
                   '<li><hr class="dropdown-divider"></li>' +
                   '<li><a class="dropdown-item" href="#" data-action="edit_selected" data-id="learnspam-single-qitem" data-api-url="edit/qitem" data-api-attr=\'{"action":"learnspam"}\' data-item="' + encodeURI(item.id) + '"><i class="bi bi-shield-exclamation"></i> ' + lang.learn_spam_delete + '</a></li>';
               }
