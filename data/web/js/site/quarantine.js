@@ -19,7 +19,7 @@ jQuery(function($){
       serverSide: false,
       stateSave: true,
       pageLength: pagination_size,
-      order: [[3, 'desc']],
+      order: [[2, 'desc']],
       lengthMenu: [
         [10, 25, 50, 100, -1],
         [10, 25, 50, 100, 'all']
@@ -70,55 +70,51 @@ jQuery(function($){
             } else {
               item.notified = '&#10006;';
             }
-            var can_quarantine_act = (acl_data.quarantine === 1);
-            var can_delete = (acl_data.login_as === 1);
+            // Whether the current principal (mailbox user, domain admin or
+            // admin) may act on quarantine items at all - the same ACL flag
+            // that used to gate the old checkbox mass-action bar now gates
+            // release/learnspam/delete uniformly for the row menu and the
+            // per-row staging buttons below.
+            var can_act = (acl_data.quarantine === 1);
 
             // Row action menu: a single button offering a choice between
             // "Details" and, where allowed, the direct actions that previously
             // required opening the details modal first.
-            if (can_quarantine_act || can_delete) {
-              item.action = '<div class="btn-group">' +
-                '<a href="#" class="btn btn-xs btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-three-dots"></i> <span class="visually-hidden">' + lang.quick_actions + '</span></a>' +
-                '<ul class="dropdown-menu dropdown-menu-end">' +
-                '<li><a class="dropdown-item show_qid_info" href="#" data-item="' + encodeURI(item.id) + '"><i class="bi bi-file-earmark-text"></i> ' + lang.show_item + '</a></li>';
-              if (can_quarantine_act) {
-                item.action += '<li><hr class="dropdown-divider"></li>' +
-                  '<li><a class="dropdown-item" href="#" data-action="edit_selected" data-id="release-single-qitem" data-api-url="edit/qitem" data-api-attr=\'{"action":"release"}\' data-item="' + encodeURI(item.id) + '"><i class="bi bi-inbox"></i> ' + lang.deliver_inbox + '</a></li>' +
-                  '<li><hr class="dropdown-divider"></li>' +
-                  '<li><a class="dropdown-item" href="#" data-action="edit_selected" data-id="learnspam-single-qitem" data-api-url="edit/qitem" data-api-attr=\'{"action":"learnspam"}\' data-item="' + encodeURI(item.id) + '"><i class="bi bi-shield-exclamation"></i> ' + lang.learn_spam_delete + '</a></li>';
-              }
-              if (can_delete) {
-                item.action += '<li><hr class="dropdown-divider"></li>' +
-                  '<li><a class="dropdown-item text-danger" href="#" data-action="delete_selected" data-id="delete-single-qitem" data-api-url="delete/qitem" data-item="' + encodeURI(item.id) + '"><i class="bi bi-trash"></i> ' + lang.remove + '</a></li>';
-              }
-              item.action += '</ul></div>';
+            item.action = '<div class="btn-group">' +
+              '<a href="#" class="btn btn-xs btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-three-dots-vertical"></i> ' + lang.quick_actions + '</a>' +
+              '<ul class="dropdown-menu dropdown-menu-end">' +
+              '<li><a class="dropdown-item show_qid_info" href="#" data-item="' + encodeURI(item.id) + '"><i class="bi bi-file-earmark-text"></i> ' + lang.show_item + '</a></li>';
+            if (can_act) {
+              item.action += '<li><hr class="dropdown-divider"></li>' +
+                '<li><a class="dropdown-item" href="#" data-action="edit_selected" data-id="release-single-qitem" data-api-url="edit/qitem" data-api-attr=\'{"action":"release"}\' data-item="' + encodeURI(item.id) + '"><i class="bi bi-inbox"></i> ' + lang.deliver_inbox + '</a></li>' +
+                '<li><hr class="dropdown-divider"></li>' +
+                '<li><a class="dropdown-item" href="#" data-action="edit_selected" data-id="learnspam-single-qitem" data-api-url="edit/qitem" data-api-attr=\'{"action":"learnspam"}\' data-item="' + encodeURI(item.id) + '"><i class="bi bi-shield-exclamation"></i> ' + lang.learn_spam_delete + '</a></li>' +
+                '<li><hr class="dropdown-divider"></li>' +
+                '<li><a class="dropdown-item text-danger" href="#" data-action="delete_selected" data-id="delete-single-qitem" data-api-url="delete/qitem" data-item="' + encodeURI(item.id) + '"><i class="bi bi-trash"></i> ' + lang.remove + '</a></li>';
             }
-            else {
-              item.action = '<div class="btn-group">' +
-                '<a href="#" data-item="' + encodeURI(item.id) + '" class="btn btn-xs btn-info show_qid_info"><i class="bi bi-file-earmark-text"></i> ' + lang.show_item + '</a>' +
-                '</div>';
-            }
+            item.action += '</ul></div>';
 
             // Per-row staging: mark a row for release/learnspam/delete without
             // executing immediately, so mixed actions across rows can be run
-            // together via #execute_staged_actions.
-            item.stage = '<div class="btn-group stage-group" data-item="' + encodeURI(item.id) + '">';
-            if (can_quarantine_act) {
-              item.stage += '<a href="#" class="btn btn-xs btn-outline-secondary stage-toggle" data-stage-action="release" title="' + lang.deliver_inbox + '"><i class="bi bi-inbox"></i></a>' +
-                '<a href="#" class="btn btn-xs btn-outline-secondary stage-toggle" data-stage-action="learnspam" title="' + lang.learn_spam_delete + '"><i class="bi bi-shield-exclamation"></i></a>';
+            // together via .execute-staged-actions-btn. "Mark all as..." in
+            // the toolbar above the table stages every visible row the same
+            // way (see .stage-all-action below).
+            item.stage = '';
+            if (can_act) {
+              item.stage = '<div class="btn-group stage-group" data-item="' + encodeURI(item.id) + '">' +
+                '<a href="#" class="btn btn-xs btn-outline-secondary stage-toggle" data-stage-action="release" title="' + lang.deliver_inbox + '"><i class="bi bi-inbox"></i></a>' +
+                '<a href="#" class="btn btn-xs btn-outline-secondary stage-toggle" data-stage-action="learnspam" title="' + lang.learn_spam_delete + '"><i class="bi bi-shield-exclamation"></i></a>' +
+                '<a href="#" class="btn btn-xs btn-outline-secondary stage-toggle" data-stage-action="delete" title="' + lang.remove + '"><i class="bi bi-trash"></i></a>' +
+                '</div>';
             }
-            if (can_delete) {
-              item.stage += '<a href="#" class="btn btn-xs btn-outline-secondary stage-toggle" data-stage-action="delete" title="' + lang.remove + '"><i class="bi bi-trash"></i></a>';
-            }
-            item.stage += '</div>';
 
             // Sender (SMTP) stays the searchable/sortable value; sender_html adds
             // an on-demand "From" header tooltip without an extra API round trip
-            // for every row (see .q-from-info handler below).
+            // for every row (see .q-from-info handler below). The title must
+            // start non-empty, or Bootstrap treats the tooltip as contentless
+            // at init time and later .tooltip('show') calls fail.
             item.sender_html = '<span>' + escapeHtml(item.sender) + '</span> ' +
-              '<a href="#" class="q-from-info" data-bs-toggle="tooltip" data-item="' + encodeURI(item.id) + '" title=""><i class="bi bi-info-circle"></i></a>';
-
-            item.chkbox = '<input type="checkbox" class="form-check-input" data-id="qitems" name="multi_select" value="' + item.id + '" />';
+              '<a href="#" class="q-from-info" data-bs-toggle="tooltip" data-item="' + encodeURI(item.id) + '" title="' + escapeHtml(lang.sender_header) + '"><i class="bi bi-info-circle"></i></a>';
           });
 
           return data;
@@ -129,13 +125,6 @@ jQuery(function($){
           // placeholder, so checkbox will not block child row toggle
           title: '',
           data: null,
-          searchable: false,
-          orderable: false,
-          defaultContent: ''
-        },
-        {
-          title: '',
-          data: 'chkbox',
           searchable: false,
           orderable: false,
           defaultContent: ''
@@ -334,32 +323,49 @@ jQuery(function($){
 
   // Stage a single row for release/learnspam/delete without executing it yet,
   // so rows can be staged with different actions and applied together via
-  // #execute_staged_actions. At most one staged action per row (radio-like).
+  // .execute-staged-actions-btn. At most one staged action per row (radio-like).
+  function stage_row(toggle_btn, stage_action) {
+    var group = toggle_btn.closest('.stage-group');
+    group.find('.stage-toggle').removeClass('active btn-success btn-warning btn-danger').addClass('btn-outline-secondary');
+    toggle_btn.removeClass('btn-outline-secondary').addClass('active');
+    if (stage_action === 'release') toggle_btn.addClass('btn-success');
+    else if (stage_action === 'learnspam') toggle_btn.addClass('btn-warning');
+    else if (stage_action === 'delete') toggle_btn.addClass('btn-danger');
+  }
+
   $('body').on('click', '.stage-toggle', function (e) {
     e.preventDefault();
     var was_active = $(this).hasClass('active');
     var group = $(this).closest('.stage-group');
     group.find('.stage-toggle').removeClass('active btn-success btn-warning btn-danger').addClass('btn-outline-secondary');
     if (!was_active) {
-      var stage_action = $(this).data('stage-action');
-      $(this).removeClass('btn-outline-secondary').addClass('active');
-      if (stage_action === 'release') $(this).addClass('btn-success');
-      else if (stage_action === 'learnspam') $(this).addClass('btn-warning');
-      else if (stage_action === 'delete') $(this).addClass('btn-danger');
+      stage_row($(this), $(this).data('stage-action'));
     }
+    update_execute_staged_actions_btn();
+  });
+
+  // "Mark all as..." in the toolbar above/below the table: stages every
+  // currently visible row (i.e. the current DataTables page) with the chosen
+  // action, replacing the old checkbox "select all + one action for all" bar.
+  $('body').on('click', '.stage-all-action', function (e) {
+    e.preventDefault();
+    var stage_action = $(this).data('stage-action');
+    $('.stage-group').each(function () {
+      stage_row($(this).find('.stage-toggle[data-stage-action="' + stage_action + '"]'), stage_action);
+    });
     update_execute_staged_actions_btn();
   });
 
   function update_execute_staged_actions_btn() {
     var staged_count = $('.stage-toggle.active').length;
-    $('#execute_staged_actions').toggleClass('disabled', staged_count === 0);
+    $('.execute-staged-actions-btn').toggleClass('disabled', staged_count === 0);
   }
 
   // Run every staged action in one pass: group staged rows by action, fire the
   // release/learnspam requests right away (matches the existing mass-action
   // behaviour, which also does not ask for confirmation), and reuse the
   // existing #ConfirmDeleteModal for the delete bucket before deleting.
-  $('body').on('click', '#execute_staged_actions', function (e) {
+  $('body').on('click', '.execute-staged-actions-btn', function (e) {
     e.preventDefault();
     if ($(this).hasClass('disabled')) return;
 
@@ -446,7 +452,13 @@ jQuery(function($){
     var item_id = info_link.data('item');
 
     function set_tooltip_text(text) {
-      info_link.attr('data-bs-original-title', lang.sender_header + ': ' + text).tooltip('show');
+      info_link.attr('data-bs-original-title', lang.sender_header + ': ' + text);
+      // The row was just (re)rendered by DataTables, so this element may not
+      // have a Bootstrap tooltip instance yet.
+      if (!bootstrap.Tooltip.getInstance(info_link[0])) {
+        info_link.tooltip();
+      }
+      info_link.tooltip('show');
     }
 
     if (typeof from_header_cache[item_id] !== 'undefined') {
