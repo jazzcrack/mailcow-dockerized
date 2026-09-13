@@ -1051,6 +1051,7 @@
         "action": "Action",
         "atts": "Attachments",
         "check_hash": "Search file hash @ VT",
+        "clear_staged_actions": "Clear staged actions",
         "confirm": "Confirm",
         "confirm_delete": "Confirm the deletion of this element.",
         "danger": "Danger",

@@ -1050,6 +1050,7 @@
         "action": "Aktion",
         "atts": "Anhänge",
         "check_hash": "Checksumme auf VirusTotal suchen",
+        "clear_staged_actions": "Vormerkungen entfernen",
         "confirm": "Bestätigen",
         "confirm_delete": "Bestätigen Sie die Löschung dieses Elements.",
         "danger": "Gefahr",

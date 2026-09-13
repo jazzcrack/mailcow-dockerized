@@ -356,6 +356,14 @@ jQuery(function($){
     update_execute_staged_actions_btn();
   });
 
+  // "Clear staged actions": unstage every row, e.g. to back out of a "mark
+  // all as..." before executing anything.
+  $('body').on('click', '.clear-staged-actions', function (e) {
+    e.preventDefault();
+    $('.stage-toggle').removeClass('active btn-success btn-warning btn-danger').addClass('btn-outline-secondary');
+    update_execute_staged_actions_btn();
+  });
+
   function update_execute_staged_actions_btn() {
     var staged_count = $('.stage-toggle.active').length;
     $('.execute-staged-actions-btn').toggleClass('disabled', staged_count === 0);
